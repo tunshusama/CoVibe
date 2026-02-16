@@ -16,5 +16,14 @@
     "featureFile": "feature-9.js",
     "usedAI": true,
     "releasedAt": "2026-02-16T12:04:01.053Z"
+  },
+  {
+    "id": 10,
+    "submissionId": 10,
+    "moduleType": "custom-10",
+    "request": "1.界面的“生成”按钮太小了，和输入框高度不匹配\n2.界面有个“未知模块”，删掉",
+    "featureFile": "feature-10.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T12:35:05.031Z"
   }
 ]
