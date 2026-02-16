@@ -129,10 +129,57 @@ function enforceRegistrationAndType(code, moduleType) {
   output = output.replace(/var\s+moduleType\s*=\s*['"][^'"]+['"]/g, `var moduleType = '${moduleType}'`);
 
   if (!/registerFeature\s*\(/.test(output)) {
+    // Auto-attach registration if model forgot this final line.
+    const hasCreateCardFn =
+      /function\s+createCard\s*\(/.test(output) ||
+      /const\s+createCard\s*=\s*\(/.test(output) ||
+      /let\s+createCard\s*=\s*\(/.test(output) ||
+      /var\s+createCard\s*=\s*\(/.test(output);
+
+    if (hasCreateCardFn) {
+      output += `\n\nif (typeof window.registerFeature === 'function') {\n  window.registerFeature('${moduleType}', createCard);\n}\n`;
+    }
+  }
+
+  if (!/registerFeature\s*\(/.test(output)) {
     throw new Error('KIMI_CODE_MISSING_REGISTER_FEATURE');
   }
 
   return output;
+}
+
+function createFallbackFeatureCode({ submission, moduleType, reason }) {
+  const safeTitle = String(submission.request || '新功能').replace(/[`$\\]/g, '').slice(0, 120);
+  return [
+    `// Feature ${submission.id}: ${submission.request}`,
+    `// Fallback generated at ${nowISO()} because: ${reason}`,
+    `(function() {`,
+    `  const moduleType = '${moduleType}';`,
+    `  function createCard() {`,
+    `    const card = document.createElement('div');`,
+    `    card.className = 'card';`,
+    `    const title = document.createElement('strong');`,
+    `    title.textContent = '${safeTitle}';`,
+    `    const titleWrap = document.createElement('div');`,
+    `    titleWrap.appendChild(title);`,
+    `    const hintWrap = document.createElement('div');`,
+    `    hintWrap.className = 'placeholder-content';`,
+    `    const hint = document.createElement('p');`,
+    `    hint.textContent = '该功能已创建，复杂交互生成失败，已启用兜底展示。';`,
+    `    hintWrap.appendChild(hint);`,
+    `    const ts = document.createElement('small');`,
+    `    ts.textContent = new Date().toLocaleString('zh-CN');`,
+    `    card.appendChild(titleWrap);`,
+    `    card.appendChild(hintWrap);`,
+    `    card.appendChild(ts);`,
+    `    return card;`,
+    `  }`,
+    `  if (typeof window.registerFeature === 'function') {`,
+    `    window.registerFeature(moduleType, createCard);`,
+    `  }`,
+    `})();`,
+    ``
+  ].join('\n');
 }
 
 async function generateKimiCode(submission) {
@@ -255,7 +302,23 @@ async function run() {
       submission.error = null;
       saveSubmissions(submissions);
 
-      const builtResult = await generateKimiCode(submission);
+      let builtResult;
+      try {
+        builtResult = await generateKimiCode(submission);
+      } catch (err) {
+        if (String(err.message || '').includes('KIMI_CODE_MISSING_REGISTER_FEATURE')) {
+          builtResult = {
+            moduleType: `custom-${submission.id}`,
+            code: createFallbackFeatureCode({
+              submission,
+              moduleType: `custom-${submission.id}`,
+              reason: 'KIMI_CODE_MISSING_REGISTER_FEATURE'
+            })
+          };
+        } else {
+          throw err;
+        }
+      }
       const featureFileName = `feature-${submission.id}.js`;
 
       fs.mkdirSync(FEATURES_DIR, { recursive: true });
@@ -267,7 +330,7 @@ async function run() {
       submission.artifact = {
         moduleType: builtResult.moduleType,
         generatedAt: nowISO(),
-        approach: 'kimi-code-api'
+        approach: builtResult.code.includes('兜底展示') ? 'kimi-code-api-with-fallback' : 'kimi-code-api'
       };
       submission.updatedAt = nowISO();
 
