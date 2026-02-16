@@ -1,0 +1,143 @@
+[
+  {
+    "id": 1,
+    "request": "我要做个随机昵称生成器，参与网站建设的用户都能获得一个随机昵称，格式是“形容词+的+水果蔬菜名”，比如孤独的草莓，快乐的西瓜",
+    "status": "RELEASED",
+    "createdAt": "2026-02-16T06:34:49.396Z",
+    "updatedAt": "2026-02-16T06:41:14.312Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：我要做个随机昵称生成器，参与网站建设的用户都能获得一个随机昵称，格式是“形容词+的+水果蔬菜名”，比...",
+      "recommendedApproach": "根据需求 \"我要做个随机昵称生成器，参与网站建设的用户都能获得一个随机昵称，格式是“形容词+的+水果蔬菜名”，比如孤独的草莓，快乐的西瓜\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom",
+      "generatedAt": "2026-02-16T06:41:14.261Z",
+      "approach": "ai-generated"
+    },
+    "featureFile": "feature-1.js",
+    "releasedAt": "2026-02-16T06:41:14.312Z",
+    "error": null,
+    "usedAI": true
+  },
+  {
+    "id": 2,
+    "request": "现在的网站用户提出需求后，没有任何反馈。我觉得应该1.用户提出需求后，要展示接受中➡️评审中➡️生成中➡️上线中的过程，每个过程都有个加载动画，过程结束后就有个✅",
+    "status": "RELEASED",
+    "createdAt": "2026-02-16T06:44:54.586Z",
+    "updatedAt": "2026-02-16T06:58:34.787Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：现在的网站用户提出需求后，没有任何反馈。我觉得应该1.用户提出需求后，要展示接受中➡️评审中➡️生成...",
+      "recommendedApproach": "根据需求 \"现在的网站用户提出需求后，没有任何反馈。我觉得应该1.用户提出需求后，要展示接受中➡️评审中➡️生成中➡️上线中的过程，每个过程都有个加载动画，过程结束后就有个✅\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom",
+      "generatedAt": "2026-02-16T06:58:34.729Z",
+      "approach": "ai-generated"
+    },
+    "featureFile": "feature-2.js",
+    "releasedAt": "2026-02-16T06:58:34.787Z",
+    "error": null,
+    "usedAI": true
+  },
+  {
+    "id": 3,
+    "request": "给拜访该网站的用户起一个随机id",
+    "status": "FAILED",
+    "createdAt": "2026-02-16T07:16:15.984Z",
+    "updatedAt": "2026-02-16T07:29:22.865Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：给拜访该网站的用户起一个随机id",
+      "recommendedApproach": "根据需求 \"给拜访该网站的用户起一个随机id\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": null,
+    "featureFile": null,
+    "releasedAt": null,
+    "error": "MISSING_KIMI_API_KEY"
+  },
+  {
+    "id": 4,
+    "request": "我要给每个来访的用户起一个昵称，格式为“形容词+水果蔬菜名”",
+    "status": "FAILED",
+    "createdAt": "2026-02-16T07:40:20.930Z",
+    "updatedAt": "2026-02-16T07:40:21.385Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：我要给每个来访的用户起一个昵称，格式为“形容词+水果蔬菜名”",
+      "recommendedApproach": "根据需求 \"我要给每个来访的用户起一个昵称，格式为“形容词+水果蔬菜名”\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": null,
+    "featureFile": null,
+    "releasedAt": null,
+    "error": "KIMI_HTTP_400:{\"error\":{\"message\":\"invalid temperature: only 1 is allowed for this model\",\"type\":\"invalid_request_error\"}}"
+  },
+  {
+    "id": 5,
+    "request": "我要给每一个来访的用户起一个昵称，格式为“形容词+水果名”",
+    "status": "FAILED",
+    "createdAt": "2026-02-16T07:41:37.758Z",
+    "updatedAt": "2026-02-16T07:42:22.999Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：我要给每一个来访的用户起一个昵称，格式为“形容词+水果名”",
+      "recommendedApproach": "根据需求 \"我要给每一个来访的用户起一个昵称，格式为“形容词+水果名”\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": null,
+    "featureFile": null,
+    "releasedAt": null,
+    "error": "KIMI_TIMEOUT"
+  },
+  {
+    "id": 6,
+    "request": "我要给每个来访的用户起一个昵称，格式是“形容词+水果/蔬菜/动物名”",
+    "status": "RELEASING",
+    "createdAt": "2026-02-16T07:43:57.125Z",
+    "updatedAt": "2026-02-16T07:44:48.098Z",
+    "ip": "127.0.0.1",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：我要给每个来访的用户起一个昵称，格式是“形容词+水果/蔬菜/动物名”",
+      "recommendedApproach": "根据需求 \"我要给每个来访的用户起一个昵称，格式是“形容词+水果/蔬菜/动物名”\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom-6",
+      "generatedAt": "2026-02-16T07:44:48.096Z",
+      "approach": "kimi-code-api"
+    },
+    "featureFile": "feature-6.js",
+    "releasedAt": null,
+    "error": null,
+    "usedAI": true
+  }
+]
