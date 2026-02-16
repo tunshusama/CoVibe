@@ -108,6 +108,51 @@ async function loadFeaturesWithFallback() {
   return local;
 }
 
+async function loadFeatureScriptText(featureFile) {
+  const fullPath = path.join(FEATURE_FILES_DIR, featureFile);
+  try {
+    return await fs.promises.readFile(fullPath, 'utf8');
+  } catch {
+    try {
+      const remote = await githubGetFileText(`public/features/${featureFile}`);
+      if (!remote) return null;
+      fs.mkdirSync(FEATURE_FILES_DIR, { recursive: true });
+      fs.writeFileSync(fullPath, remote, 'utf8');
+      return remote;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function isFeatureScriptValid(scriptText, moduleType) {
+  const text = String(scriptText || '');
+  if (!text.trim()) return false;
+  if (!/function\s+createCard\s*\(\s*\)/.test(text) && !/(const|let|var)\s+createCard\s*=\s*\(\s*\)\s*=>/.test(text)) {
+    return false;
+  }
+  if (!new RegExp(`registerFeature\\s*\\(\\s*['"]${String(moduleType || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`).test(text)) {
+    return false;
+  }
+  return true;
+}
+
+async function sanitizeReleasedFeatures(features) {
+  const seen = new Set();
+  const output = [];
+  for (const feature of features || []) {
+    if (!feature || !feature.moduleType || !feature.featureFile) continue;
+    if (seen.has(feature.moduleType)) continue;
+    const scriptText = await loadFeatureScriptText(feature.featureFile);
+    if (!isFeatureScriptValid(scriptText, feature.moduleType)) {
+      continue;
+    }
+    seen.add(feature.moduleType);
+    output.push(feature);
+  }
+  return output;
+}
+
 function generateId() {
   const submissions = loadSubmissions();
   return submissions.length > 0 ? Math.max(...submissions.map((s) => s.id)) + 1 : 1;
@@ -293,10 +338,11 @@ function createAppServer({
     // GET /api/state - 获取公开状态（已发布功能列表）
     if (method === 'GET' && url === '/api/state') {
       const features = await loadFeaturesWithFallback();
+      const sanitizedFeatures = await sanitizeReleasedFeatures(features);
       const submissions = loadSubmissions();
       const recentSubmissions = submissions.slice(-10).reverse();
       return sendJSON(res, 200, {
-        releasedFeatures: features,
+        releasedFeatures: sanitizedFeatures,
         recentSubmissions: recentSubmissions.map((s) => ({
           id: s.id,
           request: s.request,

@@ -265,10 +265,7 @@ function createFeatureCard(feature) {
   if (type === 'picker') return createPickerCard(feature);
   if (type === 'timer') return createTimerCard(feature);
 
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.textContent = `未知模块: ${type}`;
-  return card;
+  return null;
 }
 
 async function renderReleasedFeatures(features) {
@@ -287,13 +284,10 @@ async function renderReleasedFeatures(features) {
   // Then render all cards
   (features || []).forEach((feature) => {
     if (feature.__scriptLoadFailed) {
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `<div><strong>${escapeHTML(feature.request || '已发布功能')}</strong></div><small>该功能脚本暂不可用，已跳过渲染。</small>`;
-      runtimeRoot.appendChild(card);
       return;
     }
-    runtimeRoot.appendChild(createFeatureCard(feature));
+    const card = createFeatureCard(feature);
+    if (card) runtimeRoot.appendChild(card);
   });
 }
 

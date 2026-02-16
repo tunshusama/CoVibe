@@ -1,10 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const vm = require('vm');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const SUBMISSIONS_FILE = path.join(DATA_DIR, 'submissions.json');
 const FEATURES_DIR = process.env.FEATURES_DIR || path.join(__dirname, '../../public/features');
+const REPO_ROOT = path.join(__dirname, '../..');
+const PUBLIC_DIR = path.join(REPO_ROOT, 'public');
 
 const KIMI_API_KEY = process.env.KIMI_API_KEY;
 const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1';
@@ -182,6 +185,116 @@ function createFallbackFeatureCode({ submission, moduleType, reason }) {
   ].join('\n');
 }
 
+function escapeForRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function validateGeneratedCode(code, moduleType) {
+  const src = String(code || '');
+  if (!src.trim()) throw new Error('KIMI_EMPTY_CODE');
+
+  try {
+    new vm.Script(src, { filename: `feature-${moduleType}.js` });
+  } catch (error) {
+    throw new Error(`KIMI_CODE_SYNTAX_ERROR:${error.message}`);
+  }
+
+  if (src.length < 80) {
+    throw new Error('KIMI_CODE_TOO_SHORT');
+  }
+
+  const requiredRegister = new RegExp(`registerFeature\\s*\\(\\s*['"]${escapeForRegex(moduleType)}['"]`);
+  if (!requiredRegister.test(src)) {
+    throw new Error('KIMI_CODE_BAD_REGISTER_TARGET');
+  }
+
+  if (!/createCard\s*\(/.test(src)) {
+    throw new Error('KIMI_CODE_MISSING_CREATE_CARD');
+  }
+
+  if (!(/className\s*=\s*['"]card['"]/.test(src) || /classList\.add\(\s*['"]card['"]\s*\)/.test(src))) {
+    throw new Error('KIMI_CODE_MISSING_CARD_CLASS');
+  }
+
+  if (/\beval\s*\(|\bnew Function\b|document\.write\s*\(/.test(src)) {
+    throw new Error('KIMI_CODE_BLOCKED_API');
+  }
+}
+
+function isUiPatchRequest(request) {
+  const text = String(request || '').toLowerCase();
+  if (!text) return false;
+  return [
+    /按钮.*(太小|高度|宽度|样式|ui|界面)/,
+    /输入框.*(太矮|太高|多行|五行|高度|样式|ui|界面)/,
+    /(删除|删掉|去掉).*(未知模块|模块|红色框|重复)/,
+    /(ui|界面|样式|布局|主题|颜色).*(修改|调整|优化|修复)/
+  ].some((re) => re.test(text));
+}
+
+function patchComposerButtonHeight(stylesText) {
+  return stylesText.replace(
+    /(\.composer button\s*\{[^}]*?)height:\s*[^;]+;([^}]*\})/s,
+    `$1height: auto;\n  min-height: 8.5rem;\n  align-self: stretch;$2`
+  );
+}
+
+function applyUiPatch(submission) {
+  const request = String(submission.request || '');
+  const appJsPath = path.join(PUBLIC_DIR, 'app.js');
+  const stylesPath = path.join(PUBLIC_DIR, 'styles.css');
+  const indexPath = path.join(PUBLIC_DIR, 'index.html');
+
+  const changedFiles = [];
+
+  if (/(删除|删掉|去掉).*(未知模块|模块|红色框|重复)/.test(request) && fs.existsSync(appJsPath)) {
+    let appJs = fs.readFileSync(appJsPath, 'utf8');
+    const next = appJs
+      .replace(/card\.textContent = `未知模块: \$\{type\}`;\n\s*return card;/, 'return null;')
+      .replace(
+        /if \(feature\.__scriptLoadFailed\) \{[\s\S]*?runtimeRoot\.appendChild\(card\);\n\s*return;\n\s*\}/,
+        'if (feature.__scriptLoadFailed) {\n      return;\n    }'
+      )
+      .replace(
+        /runtimeRoot\.appendChild\(createFeatureCard\(feature\)\);/,
+        'const card = createFeatureCard(feature);\n    if (card) runtimeRoot.appendChild(card);'
+      );
+
+    if (next !== appJs) {
+      fs.writeFileSync(appJsPath, next, 'utf8');
+      changedFiles.push('public/app.js');
+    }
+  }
+
+  if (/(按钮.*(太小|高度|宽度|样式)|输入框.*(太矮|太高|多行|五行|高度|样式))/i.test(request) && fs.existsSync(stylesPath)) {
+    const styles = fs.readFileSync(stylesPath, 'utf8');
+    const next = patchComposerButtonHeight(styles);
+    if (next !== styles) {
+      fs.writeFileSync(stylesPath, next, 'utf8');
+      changedFiles.push('public/styles.css');
+    }
+  }
+
+  if (/输入框.*(多行|五行)/.test(request) && fs.existsSync(indexPath)) {
+    const indexHtml = fs.readFileSync(indexPath, 'utf8');
+    const next = indexHtml.replace(/<textarea id="requestInput"[^>]*rows="\d+"/, '<textarea id="requestInput" rows="5"');
+    if (next !== indexHtml) {
+      fs.writeFileSync(indexPath, next, 'utf8');
+      changedFiles.push('public/index.html');
+    }
+  }
+
+  if (changedFiles.length === 0) {
+    throw new Error('UI_PATCH_NO_EFFECT');
+  }
+
+  return {
+    kind: 'site-patch',
+    moduleType: `site-patch-${submission.id}`,
+    changedFiles
+  };
+}
+
 async function generateKimiCode(submission) {
   if (!KIMI_API_KEY) {
     throw new Error('MISSING_KIMI_API_KEY');
@@ -266,6 +379,7 @@ async function generateKimiCode(submission) {
   }
 
   const enforced = enforceRegistrationAndType(normalized, moduleType);
+  validateGeneratedCode(enforced, moduleType);
   const header = [
     `// Feature ${submission.id}: ${submission.request}`,
     `// Generated with Kimi Code API at ${nowISO()}`,
@@ -312,39 +426,57 @@ async function run() {
       saveSubmissions(submissions);
 
       let builtResult;
-      try {
-        builtResult = await generateKimiCode(submission);
-      } catch (err) {
-        if (String(err.message || '').includes('KIMI_CODE_MISSING_REGISTER_FEATURE')) {
-          builtResult = {
-            moduleType: `custom-${submission.id}`,
-            code: createFallbackFeatureCode({
-              submission,
+      if (isUiPatchRequest(submission.request)) {
+        builtResult = applyUiPatch(submission);
+      } else {
+        try {
+          builtResult = await generateKimiCode(submission);
+        } catch (err) {
+          if (String(err.message || '').includes('KIMI_CODE_MISSING_REGISTER_FEATURE')) {
+            builtResult = {
               moduleType: `custom-${submission.id}`,
-              reason: 'KIMI_CODE_MISSING_REGISTER_FEATURE'
-            })
-          };
-        } else {
-          throw err;
+              code: createFallbackFeatureCode({
+                submission,
+                moduleType: `custom-${submission.id}`,
+                reason: 'KIMI_CODE_MISSING_REGISTER_FEATURE'
+              })
+            };
+          } else {
+            throw err;
+          }
         }
       }
-      const featureFileName = `feature-${submission.id}.js`;
-
-      fs.mkdirSync(FEATURES_DIR, { recursive: true });
-      fs.writeFileSync(path.join(FEATURES_DIR, featureFileName), builtResult.code);
 
       submission.status = 'BUILT';
-      submission.featureFile = featureFileName;
-      submission.usedAI = true;
-      submission.artifact = {
-        moduleType: builtResult.moduleType,
-        generatedAt: nowISO(),
-        approach: builtResult.code.includes('兜底展示') ? 'kimi-code-api-with-fallback' : 'kimi-code-api'
-      };
+      if (builtResult.kind === 'site-patch') {
+        submission.featureFile = null;
+        submission.usedAI = false;
+        submission.artifact = {
+          moduleType: builtResult.moduleType,
+          generatedAt: nowISO(),
+          approach: 'site-patch',
+          changedFiles: builtResult.changedFiles
+        };
+      } else {
+        const featureFileName = `feature-${submission.id}.js`;
+        fs.mkdirSync(FEATURES_DIR, { recursive: true });
+        fs.writeFileSync(path.join(FEATURES_DIR, featureFileName), builtResult.code);
+        submission.featureFile = featureFileName;
+        submission.usedAI = true;
+        submission.artifact = {
+          moduleType: builtResult.moduleType,
+          generatedAt: nowISO(),
+          approach: builtResult.code.includes('兜底展示') ? 'kimi-code-api-with-fallback' : 'kimi-code-api'
+        };
+      }
       submission.updatedAt = nowISO();
 
       built += 1;
-      console.log(`BUILD_AGENT: Submission #${submission.id} BUILT -> ${featureFileName}`);
+      console.log(
+        builtResult.kind === 'site-patch'
+          ? `BUILD_AGENT: Submission #${submission.id} BUILT -> site patch (${builtResult.changedFiles.join(', ')})`
+          : `BUILD_AGENT: Submission #${submission.id} BUILT -> ${submission.featureFile}`
+      );
     } catch (err) {
       submission.status = 'FAILED';
       submission.error = err.message;

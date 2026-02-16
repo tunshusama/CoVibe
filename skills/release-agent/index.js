@@ -13,6 +13,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = process.env.GITHUB_REPO || '';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const GITHUB_UPLOAD_MODE = process.env.GITHUB_UPLOAD_MODE || 'auto'; // auto | git | api
+const RELEASING_STALE_MS = Number(process.env.RELEASING_STALE_MS || 20 * 60 * 1000);
 
 function loadSubmissions() {
   if (!fs.existsSync(SUBMISSIONS_FILE)) return [];
@@ -38,8 +39,52 @@ function nowISO() {
   return new Date().toISOString();
 }
 
+function reconcileSubmissionStates(submissions, features) {
+  let changed = 0;
+  const now = Date.now();
+
+  for (const submission of submissions) {
+    if (submission.status !== 'RELEASING') continue;
+
+    const matchedFeature = features.find((f) => Number(f.submissionId) === Number(submission.id) || Number(f.id) === Number(submission.id));
+    if (matchedFeature) {
+      submission.status = 'RELEASED';
+      submission.error = null;
+      submission.releasedAt = submission.releasedAt || matchedFeature.releasedAt || nowISO();
+      submission.updatedAt = nowISO();
+      changed += 1;
+      continue;
+    }
+
+    const updatedTs = Date.parse(submission.updatedAt || submission.createdAt || '');
+    if (Number.isFinite(updatedTs) && now - updatedTs > RELEASING_STALE_MS) {
+      submission.status = 'FAILED';
+      submission.error = 'RELEASE_STALE_NO_FEATURE';
+      submission.updatedAt = nowISO();
+      changed += 1;
+    }
+  }
+
+  return changed;
+}
+
 function hasGitRepo() {
   return fs.existsSync(path.join(REPO_ROOT, '.git'));
+}
+
+function collectReleasePaths(submission) {
+  const paths = [];
+  if (submission.featureFile) {
+    paths.push(path.relative(REPO_ROOT, path.join(FEATURES_DIR, submission.featureFile)));
+  }
+  if (submission.artifact?.approach === 'site-patch' && Array.isArray(submission.artifact.changedFiles)) {
+    for (const file of submission.artifact.changedFiles) {
+      paths.push(file);
+    }
+  }
+  paths.push(path.relative(REPO_ROOT, SUBMISSIONS_FILE));
+  paths.push(path.relative(REPO_ROOT, FEATURES_FILE));
+  return Array.from(new Set(paths));
 }
 
 function gitPushSubmission(submission) {
@@ -47,11 +92,12 @@ function gitPushSubmission(submission) {
     throw new Error('GIT_REPO_NOT_FOUND');
   }
 
-  const featureRel = path.relative(REPO_ROOT, path.join(FEATURES_DIR, submission.featureFile));
-  const submissionsRel = path.relative(REPO_ROOT, SUBMISSIONS_FILE);
-  const featuresRel = path.relative(REPO_ROOT, FEATURES_FILE);
-
-  execSync(`git add "${featureRel}" "${submissionsRel}" "${featuresRel}"`, {
+  const files = collectReleasePaths(submission);
+  if (files.length === 0) {
+    throw new Error('NO_RELEASE_FILES');
+  }
+  const addArgs = files.map((f) => `"${f}"`).join(' ');
+  execSync(`git add ${addArgs}`, {
     cwd: REPO_ROOT,
     stdio: 'pipe'
   });
@@ -143,16 +189,26 @@ async function githubPutFile(repoPath, content, message) {
 }
 
 async function githubUploadSubmission(submission) {
-  const featurePath = path.join(FEATURES_DIR, submission.featureFile);
-  if (!fs.existsSync(featurePath)) {
-    throw new Error(`FEATURE_FILE_NOT_FOUND:${submission.featureFile}`);
+  if (submission.featureFile) {
+    const featurePath = path.join(FEATURES_DIR, submission.featureFile);
+    if (!fs.existsSync(featurePath)) {
+      throw new Error(`FEATURE_FILE_NOT_FOUND:${submission.featureFile}`);
+    }
+    const featureContent = fs.readFileSync(featurePath, 'utf8');
+    await githubPutFile(`public/features/${submission.featureFile}`, featureContent, `feat: release feature #${submission.id} code`);
   }
 
-  const featureContent = fs.readFileSync(featurePath, 'utf8');
+  if (submission.artifact?.approach === 'site-patch' && Array.isArray(submission.artifact.changedFiles)) {
+    for (const relPath of submission.artifact.changedFiles) {
+      const absPath = path.join(REPO_ROOT, relPath);
+      if (!fs.existsSync(absPath)) continue;
+      const content = fs.readFileSync(absPath, 'utf8');
+      await githubPutFile(relPath, content, `feat: apply site patch #${submission.id} (${relPath})`);
+    }
+  }
+
   const submissionsContent = fs.readFileSync(SUBMISSIONS_FILE, 'utf8');
   const featuresContent = fs.readFileSync(FEATURES_FILE, 'utf8');
-
-  await githubPutFile(`public/features/${submission.featureFile}`, featureContent, `feat: release feature #${submission.id} code`);
   await githubPutFile('data/submissions.json', submissionsContent, `chore: sync submissions for feature #${submission.id}`);
   await githubPutFile('data/features.json', featuresContent, `chore: sync released features for feature #${submission.id}`);
 }
@@ -185,6 +241,11 @@ async function uploadToGitHub(submission) {
 async function run() {
   const submissions = loadSubmissions();
   const features = loadFeatures();
+  const reconciled = reconcileSubmissionStates(submissions, features);
+  if (reconciled > 0) {
+    saveSubmissions(submissions);
+    console.log(`RELEASE_AGENT: Reconciled ${reconciled} stale submission state(s)`);
+  }
 
   const pending = submissions.filter((s) => s.status === 'BUILT');
 
@@ -215,32 +276,35 @@ async function run() {
       submission.status = 'RELEASING';
       submission.updatedAt = nowISO();
 
-      const featureFilePath = path.join(FEATURES_DIR, submission.featureFile || '');
-      if (!fs.existsSync(featureFilePath)) {
-        throw new Error(`FEATURE_FILE_NOT_FOUND:${submission.featureFile}`);
-      }
+      const isSitePatch = submission.artifact?.approach === 'site-patch';
+      if (!isSitePatch) {
+        const featureFilePath = path.join(FEATURES_DIR, submission.featureFile || '');
+        if (!fs.existsSync(featureFilePath)) {
+          throw new Error(`FEATURE_FILE_NOT_FOUND:${submission.featureFile}`);
+        }
 
-      const feature = {
-        id: submission.id,
-        submissionId: submission.id,
-        moduleType: submission.artifact?.moduleType || `custom-${submission.id}`,
-        request: submission.request,
-        featureFile: submission.featureFile,
-        usedAI: submission.usedAI || false,
-        releasedAt: nowISO()
-      };
-      const nextFeatures = [...features];
-      const existingIndex = nextFeatures.findIndex((f) => f.id === submission.id);
-      if (existingIndex >= 0) {
-        nextFeatures[existingIndex] = feature;
-      } else {
-        nextFeatures.push(feature);
-      }
+        const feature = {
+          id: submission.id,
+          submissionId: submission.id,
+          moduleType: submission.artifact?.moduleType || `custom-${submission.id}`,
+          request: submission.request,
+          featureFile: submission.featureFile,
+          usedAI: submission.usedAI || false,
+          releasedAt: nowISO()
+        };
+        const nextFeatures = [...features];
+        const existingIndex = nextFeatures.findIndex((f) => f.id === submission.id);
+        if (existingIndex >= 0) {
+          nextFeatures[existingIndex] = feature;
+        } else {
+          nextFeatures.push(feature);
+        }
 
-      previousFeatures = [...features];
-      features.length = 0;
-      features.push(...nextFeatures);
-      saveFeatures(features);
+        previousFeatures = [...features];
+        features.length = 0;
+        features.push(...nextFeatures);
+        saveFeatures(features);
+      }
       saveSubmissions(submissions);
 
       const uploadMode = await uploadToGitHub(submission);
