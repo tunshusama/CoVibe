@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "submissionId": 1,
+    "moduleType": "custom",
+    "request": "我要做个随机昵称生成器，参与网站建设的用户都能获得一个随机昵称，格式是“形容词+的+水果蔬菜名”，比如孤独的草莓，快乐的西瓜",
+    "featureFile": "feature-1.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T06:41:14.312Z"
+  },
+  {
+    "id": 2,
+    "submissionId": 2,
+    "moduleType": "custom",
+    "request": "现在的网站用户提出需求后，没有任何反馈。我觉得应该1.用户提出需求后，要展示接受中➡️评审中➡️生成中➡️上线中的过程，每个过程都有个加载动画，过程结束后就有个✅",
+    "featureFile": "feature-2.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T06:58:34.787Z"
+  },
+  {
+    "id": 6,
+    "submissionId": 6,
+    "moduleType": "custom-6",
+    "request": "我要给每个来访的用户起一个昵称，格式是“形容词+水果/蔬菜/动物名”",
+    "featureFile": "feature-6.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T07:44:48.098Z"
+  }
+]
