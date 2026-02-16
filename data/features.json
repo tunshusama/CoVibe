@@ -34,5 +34,14 @@
     "featureFile": "feature-7.js",
     "usedAI": true,
     "releasedAt": "2026-02-16T08:10:01.748Z"
+  },
+  {
+    "id": 8,
+    "submissionId": 8,
+    "moduleType": "custom-8",
+    "request": "对于每个首次进入该网站的用户，都会出现一个选择昵称的弹窗。昵称生成规则：随机按照”形容词+水果/蔬菜/动物名“的格式生成，用户可选择重新生成，确定后不可修改，之后用户每次进入网站都绑定昵称。",
+    "featureFile": "feature-8.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T11:15:56.920Z"
   }
 ]
