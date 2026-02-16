@@ -432,13 +432,21 @@ async function run() {
         try {
           builtResult = await generateKimiCode(submission);
         } catch (err) {
-          if (String(err.message || '').includes('KIMI_CODE_MISSING_REGISTER_FEATURE')) {
+          const msg = String(err.message || '');
+          if (
+            msg.includes('KIMI_CODE_MISSING_REGISTER_FEATURE') ||
+            msg.includes('KIMI_EMPTY_CODE') ||
+            msg.includes('KIMI_CODE_SYNTAX_ERROR') ||
+            msg.includes('KIMI_CODE_BAD_REGISTER_TARGET') ||
+            msg.includes('KIMI_CODE_MISSING_CREATE_CARD') ||
+            msg.includes('KIMI_CODE_MISSING_CARD_CLASS')
+          ) {
             builtResult = {
               moduleType: `custom-${submission.id}`,
               code: createFallbackFeatureCode({
                 submission,
                 moduleType: `custom-${submission.id}`,
-                reason: 'KIMI_CODE_MISSING_REGISTER_FEATURE'
+                reason: msg.slice(0, 120)
               })
             };
           } else {
