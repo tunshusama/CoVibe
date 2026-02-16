@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node --env-file=.env server.js",
+    "start": "node server.js",
     "pipeline": "node --env-file=.env skills/review-agent/index.js && node --env-file=.env skills/build-agent/index.js && node --env-file=.env skills/release-agent/index.js",
     "test": "node --test tests/*.test.js"
   }
