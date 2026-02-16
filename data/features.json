@@ -25,5 +25,14 @@
     "featureFile": "feature-10.js",
     "usedAI": true,
     "releasedAt": "2026-02-16T12:35:05.031Z"
+  },
+  {
+    "id": 11,
+    "submissionId": 11,
+    "moduleType": "custom-11",
+    "request": "在页面里新增一个表格\n第一列用户昵称\n第二列任务描述\n第三列任务进程（评审中/生成中/已上线/未通过评审）",
+    "featureFile": "feature-11.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T12:41:22.226Z"
   }
 ]
