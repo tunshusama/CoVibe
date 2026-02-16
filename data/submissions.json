@@ -148,9 +148,9 @@
   {
     "id": 7,
     "request": "我要给每个访问该网站的用户赋予一个昵称，格式“形容词+水果/蔬菜/动物名”。用户可以刷新，确认后就将该昵称与该用户绑定，不可更改",
-    "status": "RELEASING",
+    "status": "RELEASED",
     "createdAt": "2026-02-16T08:09:18.848Z",
-    "updatedAt": "2026-02-16T08:10:01.748Z",
+    "updatedAt": "2026-02-16T13:56:59.936Z",
     "ip": "127.0.0.1",
     "review": {
       "approved": true,
@@ -167,16 +167,16 @@
       "approach": "kimi-code-api"
     },
     "featureFile": "feature-7.js",
-    "releasedAt": null,
+    "releasedAt": "2026-02-16T08:10:01.748Z",
     "error": null,
     "usedAI": true
   },
   {
     "id": 8,
     "request": "对于每个首次进入该网站的用户，都会出现一个选择昵称的弹窗。昵称生成规则：随机按照”形容词+水果/蔬菜/动物名“的格式生成，用户可选择重新生成，确定后不可修改，之后用户每次进入网站都绑定昵称。",
-    "status": "RELEASING",
+    "status": "FAILED",
     "createdAt": "2026-02-16T11:14:51.249Z",
-    "updatedAt": "2026-02-16T11:15:56.920Z",
+    "updatedAt": "2026-02-16T13:56:59.936Z",
     "ip": "100.64.0.2",
     "review": {
       "approved": true,
@@ -194,15 +194,15 @@
     },
     "featureFile": "feature-8.js",
     "releasedAt": null,
-    "error": null,
+    "error": "RELEASE_STALE_NO_FEATURE",
     "usedAI": true
   },
   {
     "id": 9,
     "request": "我希望网站能够有一个列表。第一列是发起用户（即发起该需求的用户昵称）第二列是需求简介（由ai）展示当前需求状态（评审中/生成中/已上线）",
-    "status": "RELEASING",
+    "status": "RELEASED",
     "createdAt": "2026-02-16T12:02:01.669Z",
-    "updatedAt": "2026-02-16T12:04:01.053Z",
+    "updatedAt": "2026-02-16T13:56:59.936Z",
     "ip": "100.64.0.2",
     "review": {
       "approved": true,
@@ -219,16 +219,16 @@
       "approach": "kimi-code-api"
     },
     "featureFile": "feature-9.js",
-    "releasedAt": null,
+    "releasedAt": "2026-02-16T12:04:01.053Z",
     "error": null,
     "usedAI": true
   },
   {
     "id": 10,
     "request": "1.界面的“生成”按钮太小了，和输入框高度不匹配\n2.界面有个“未知模块”，删掉",
-    "status": "RELEASING",
+    "status": "RELEASED",
     "createdAt": "2026-02-16T12:34:13.794Z",
-    "updatedAt": "2026-02-16T12:35:05.031Z",
+    "updatedAt": "2026-02-16T13:56:59.936Z",
     "ip": "100.64.0.3",
     "review": {
       "approved": true,
@@ -246,16 +246,16 @@
       "approach": "kimi-code-api"
     },
     "featureFile": "feature-10.js",
-    "releasedAt": null,
+    "releasedAt": "2026-02-16T12:35:05.031Z",
     "error": null,
     "usedAI": true
   },
   {
     "id": 11,
     "request": "在页面里新增一个表格\n第一列用户昵称\n第二列任务描述\n第三列任务进程（评审中/生成中/已上线/未通过评审）",
-    "status": "RELEASING",
+    "status": "RELEASED",
     "createdAt": "2026-02-16T12:40:35.021Z",
-    "updatedAt": "2026-02-16T12:41:22.226Z",
+    "updatedAt": "2026-02-16T13:56:59.936Z",
     "ip": "100.64.0.4",
     "review": {
       "approved": true,
@@ -273,6 +273,33 @@
       "approach": "kimi-code-api"
     },
     "featureFile": "feature-11.js",
+    "releasedAt": "2026-02-16T12:41:22.226Z",
+    "error": null,
+    "usedAI": true
+  },
+  {
+    "id": 12,
+    "request": "希望网站能够有一个列表。\\n第一列是发起用户（即发起该需求的用户昵称）\\n第二列是需求简介（由ai简要总结）\\n展示当前需求状态（评审中/生成中/已上线/已失败）",
+    "status": "RELEASING",
+    "createdAt": "2026-02-16T13:53:13.022Z",
+    "updatedAt": "2026-02-16T13:56:59.937Z",
+    "ip": "100.64.0.2",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 80,
+        "safety": 100,
+        "complexity": 12
+      },
+      "reason": "评审通过：希望网站能够有一个列表。\\n第一列是发起用户（即发起该需求的用户昵称）\\n第二列是需求简介（由ai简...",
+      "recommendedApproach": "根据需求 \"希望网站能够有一个列表。\\n第一列是发起用户（即发起该需求的用户昵称）\\n第二列是需求简介（由ai简要总结）\\n展示当前需求状态（评审中/生成中/已上线/已失败）\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom-12",
+      "generatedAt": "2026-02-16T13:56:59.935Z",
+      "approach": "kimi-code-api"
+    },
+    "featureFile": "feature-12.js",
     "releasedAt": null,
     "error": null,
     "usedAI": true
