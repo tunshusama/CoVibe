@@ -80,6 +80,37 @@ function normalizeModelCode(raw) {
     .trim();
 }
 
+function extractAssistantContent(response) {
+  const choice = response?.choices?.[0];
+  if (!choice) return '';
+
+  const message = choice.message || {};
+  const content = message.content;
+  if (typeof content === 'string') return content;
+
+  // Some providers return structured content blocks.
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (!part || typeof part !== 'object') return '';
+        if (typeof part.text === 'string') return part.text;
+        if (typeof part.content === 'string') return part.content;
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  if (content && typeof content === 'object') {
+    if (typeof content.text === 'string') return content.text;
+    if (typeof content.content === 'string') return content.content;
+  }
+
+  if (typeof response?.output_text === 'string') return response.output_text;
+  return '';
+}
+
 function enforceRegistrationAndType(code, moduleType) {
   let output = code;
 
@@ -133,6 +164,7 @@ async function generateKimiCode(submission) {
   const base = new URL(KIMI_BASE_URL);
   const endpoint = new URL('/v1/chat/completions', base);
   let response = null;
+  let normalized = '';
   let lastError = null;
 
   for (let attempt = 1; attempt <= KIMI_MAX_RETRIES + 1; attempt += 1) {
@@ -152,12 +184,27 @@ async function generateKimiCode(submission) {
           Authorization: `Bearer ${KIMI_API_KEY}`
         }
       );
-      break;
+
+      const generatedCode = extractAssistantContent(response);
+      normalized = normalizeModelCode(generatedCode);
+      if (normalized) break;
+
+      lastError = new Error('KIMI_EMPTY_CODE');
+      const canRetryEmpty = attempt <= KIMI_MAX_RETRIES;
+      if (!canRetryEmpty) {
+        throw lastError;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+      continue;
     } catch (error) {
       lastError = error;
       const canRetry =
         attempt <= KIMI_MAX_RETRIES &&
-        (String(error.message || '').includes('KIMI_TIMEOUT') || String(error.message || '').includes('KIMI_HTTP_5'));
+        (
+          String(error.message || '').includes('KIMI_TIMEOUT') ||
+          String(error.message || '').includes('KIMI_HTTP_5') ||
+          String(error.message || '').includes('KIMI_EMPTY_CODE')
+        );
       if (!canRetry) throw error;
       const delayMs = 1000 * attempt;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -167,9 +214,6 @@ async function generateKimiCode(submission) {
   if (!response) {
     throw lastError || new Error('KIMI_REQUEST_FAILED');
   }
-
-  const generatedCode = response?.choices?.[0]?.message?.content;
-  const normalized = normalizeModelCode(generatedCode);
   if (!normalized) {
     throw new Error('KIMI_EMPTY_CODE');
   }
