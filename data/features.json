@@ -34,5 +34,14 @@
     "featureFile": "feature-11.js",
     "usedAI": true,
     "releasedAt": "2026-02-16T12:41:22.226Z"
+  },
+  {
+    "id": 12,
+    "submissionId": 12,
+    "moduleType": "custom-12",
+    "request": "希望网站能够有一个列表。\\n第一列是发起用户（即发起该需求的用户昵称）\\n第二列是需求简介（由ai简要总结）\\n展示当前需求状态（评审中/生成中/已上线/已失败）",
+    "featureFile": "feature-12.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T13:56:59.937Z"
   }
 ]
