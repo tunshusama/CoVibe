@@ -215,9 +215,12 @@ async function loadFeatureScript(featureFile) {
     script.src = `/features/${featureFile}`;
     script.onload = () => {
       loadedFeatures.add(featureFile);
-      resolve();
+      resolve(true);
     };
-    script.onerror = reject;
+    script.onerror = () => {
+      console.warn('Feature script load failed:', featureFile);
+      resolve(false);
+    };
     document.head.appendChild(script);
   });
 }
@@ -272,12 +275,22 @@ async function renderReleasedFeatures(features) {
   // Load all feature scripts first
   for (const feature of features || []) {
     if (feature.featureFile) {
-      await loadFeatureScript(feature.featureFile);
+      const ok = await loadFeatureScript(feature.featureFile);
+      if (!ok) {
+        feature.__scriptLoadFailed = true;
+      }
     }
   }
   
   // Then render all cards
   (features || []).forEach((feature) => {
+    if (feature.__scriptLoadFailed) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<div><strong>${escapeHTML(feature.request || '已发布功能')}</strong></div><small>该功能脚本暂不可用，已跳过渲染。</small>`;
+      runtimeRoot.appendChild(card);
+      return;
+    }
     runtimeRoot.appendChild(createFeatureCard(feature));
   });
 }
