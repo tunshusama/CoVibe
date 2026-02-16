@@ -170,5 +170,31 @@
     "releasedAt": null,
     "error": null,
     "usedAI": true
+  },
+  {
+    "id": 8,
+    "request": "对于每个首次进入该网站的用户，都会出现一个选择昵称的弹窗。昵称生成规则：随机按照”形容词+水果/蔬菜/动物名“的格式生成，用户可选择重新生成，确定后不可修改，之后用户每次进入网站都绑定昵称。",
+    "status": "RELEASING",
+    "createdAt": "2026-02-16T11:14:51.249Z",
+    "updatedAt": "2026-02-16T11:15:56.920Z",
+    "ip": "100.64.0.2",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100
+      },
+      "reason": "评审通过：对于每个首次进入该网站的用户，都会出现一个选择昵称的弹窗。昵称生成规则：随机按照”形容词+水果/蔬菜...",
+      "recommendedApproach": "根据需求 \"对于每个首次进入该网站的用户，都会出现一个选择昵称的弹窗。昵称生成规则：随机按照”形容词+水果/蔬菜/动物名“的格式生成，用户可选择重新生成，确定后不可修改，之后用户每次进入网站都绑定昵称。\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom-8",
+      "generatedAt": "2026-02-16T11:15:56.919Z",
+      "approach": "kimi-code-api"
+    },
+    "featureFile": "feature-8.js",
+    "releasedAt": null,
+    "error": null,
+    "usedAI": true
   }
 ]
