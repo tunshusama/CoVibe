@@ -1,0 +1,262 @@
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
+const SUBMISSIONS_FILE = path.join(DATA_DIR, 'submissions.json');
+const FEATURES_DIR = process.env.FEATURES_DIR || path.join(__dirname, '../../public/features');
+
+const KIMI_API_KEY = process.env.KIMI_API_KEY;
+const KIMI_BASE_URL = process.env.KIMI_BASE_URL || 'https://api.moonshot.cn/v1';
+const KIMI_CODE_MODEL = process.env.KIMI_CODE_MODEL || process.env.KIMI_MODEL || 'kimi-k2.5';
+const KIMI_TIMEOUT_MS = Number(process.env.KIMI_TIMEOUT_MS || 120_000);
+const KIMI_MAX_RETRIES = Number(process.env.KIMI_MAX_RETRIES || 2);
+
+function loadSubmissions() {
+  if (!fs.existsSync(SUBMISSIONS_FILE)) return [];
+  return JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, 'utf8'));
+}
+
+function saveSubmissions(submissions) {
+  fs.mkdirSync(path.dirname(SUBMISSIONS_FILE), { recursive: true });
+  fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(submissions, null, 2));
+}
+
+function nowISO() {
+  return new Date().toISOString();
+}
+
+function requestJSON(url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = https.request(
+      {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: `${url.pathname}${url.search}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(data),
+          ...headers
+        },
+        timeout: KIMI_TIMEOUT_MS
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          const statusCode = Number(res.statusCode || 0);
+          if (statusCode < 200 || statusCode >= 300) {
+            return reject(new Error(`KIMI_HTTP_${statusCode}:${raw.slice(0, 500)}`));
+          }
+          try {
+            resolve(JSON.parse(raw));
+          } catch {
+            reject(new Error('KIMI_BAD_JSON_RESPONSE'));
+          }
+        });
+      }
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error('KIMI_TIMEOUT'));
+    });
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+function normalizeModelCode(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  return text
+    .replace(/^```(?:javascript|js)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
+}
+
+function enforceRegistrationAndType(code, moduleType) {
+  let output = code;
+
+  output = output.replace(
+    /window\.registerFeature\s*\(\s*[^,]+,\s*([^)]+)\)/,
+    `window.registerFeature('${moduleType}', $1)`
+  );
+
+  output = output.replace(
+    /registerFeature\s*\(\s*[^,]+,\s*([^)]+)\)/,
+    `registerFeature('${moduleType}', $1)`
+  );
+
+  output = output.replace(/const\s+moduleType\s*=\s*['"][^'"]+['"]/g, `const moduleType = '${moduleType}'`);
+  output = output.replace(/let\s+moduleType\s*=\s*['"][^'"]+['"]/g, `let moduleType = '${moduleType}'`);
+  output = output.replace(/var\s+moduleType\s*=\s*['"][^'"]+['"]/g, `var moduleType = '${moduleType}'`);
+
+  if (!/registerFeature\s*\(/.test(output)) {
+    throw new Error('KIMI_CODE_MISSING_REGISTER_FEATURE');
+  }
+
+  return output;
+}
+
+async function generateKimiCode(submission) {
+  if (!KIMI_API_KEY) {
+    throw new Error('MISSING_KIMI_API_KEY');
+  }
+
+  const moduleType = `custom-${submission.id}`;
+
+  const systemPrompt = [
+    'You are OpenClaw build agent.',
+    'Generate ONLY executable JavaScript code (no markdown).',
+    'Return one self-contained IIFE module.',
+    `The moduleType must be exactly "${moduleType}".`,
+    'The code must call window.registerFeature(moduleType, createCard).',
+    'createCard must return a DOM element with class "card".',
+    'Use vanilla JavaScript only.',
+    'Do not use eval/new Function/script injection.',
+    'Escape user-provided text with window.escapeHTML when rendering dynamic content.',
+    'Add one <small> timestamp element inside the card.'
+  ].join(' ');
+
+  const userPrompt = [
+    `用户需求：${submission.request}`,
+    '请生成完整可运行的前端交互组件代码。',
+    '不要解释，不要 markdown。'
+  ].join('\n');
+
+  const base = new URL(KIMI_BASE_URL);
+  const endpoint = new URL('/v1/chat/completions', base);
+  let response = null;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= KIMI_MAX_RETRIES + 1; attempt += 1) {
+    try {
+      response = await requestJSON(
+        endpoint,
+        {
+          model: KIMI_CODE_MODEL,
+          temperature: 1,
+          max_tokens: 2500,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        },
+        {
+          Authorization: `Bearer ${KIMI_API_KEY}`
+        }
+      );
+      break;
+    } catch (error) {
+      lastError = error;
+      const canRetry =
+        attempt <= KIMI_MAX_RETRIES &&
+        (String(error.message || '').includes('KIMI_TIMEOUT') || String(error.message || '').includes('KIMI_HTTP_5'));
+      if (!canRetry) throw error;
+      const delayMs = 1000 * attempt;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error('KIMI_REQUEST_FAILED');
+  }
+
+  const generatedCode = response?.choices?.[0]?.message?.content;
+  const normalized = normalizeModelCode(generatedCode);
+  if (!normalized) {
+    throw new Error('KIMI_EMPTY_CODE');
+  }
+
+  const enforced = enforceRegistrationAndType(normalized, moduleType);
+  const header = [
+    `// Feature ${submission.id}: ${submission.request}`,
+    `// Generated with Kimi Code API at ${nowISO()}`,
+    ''
+  ].join('\n');
+
+  return {
+    moduleType,
+    code: `${header}${enforced}\n`
+  };
+}
+
+async function run() {
+  const submissions = loadSubmissions();
+  const pending = submissions.filter((s) => s.status === 'APPROVED');
+
+  if (pending.length === 0) {
+    console.log('BUILD_AGENT: No approved submissions to build');
+    return { processed: 0 };
+  }
+
+  console.log(`BUILD_AGENT: Found ${pending.length} submission(s) to build`);
+  console.log(`BUILD_AGENT: Kimi Code API model: ${KIMI_CODE_MODEL}`);
+
+  let built = 0;
+  let failed = 0;
+
+  for (const submission of pending) {
+    console.log(`BUILD_AGENT: Building submission #${submission.id}: "${submission.request}"`);
+
+    try {
+      submission.status = 'GENERATING';
+      submission.updatedAt = nowISO();
+      submission.error = null;
+      saveSubmissions(submissions);
+
+      const builtResult = await generateKimiCode(submission);
+      const featureFileName = `feature-${submission.id}.js`;
+
+      fs.mkdirSync(FEATURES_DIR, { recursive: true });
+      fs.writeFileSync(path.join(FEATURES_DIR, featureFileName), builtResult.code);
+
+      submission.status = 'BUILT';
+      submission.featureFile = featureFileName;
+      submission.usedAI = true;
+      submission.artifact = {
+        moduleType: builtResult.moduleType,
+        generatedAt: nowISO(),
+        approach: 'kimi-code-api'
+      };
+      submission.updatedAt = nowISO();
+
+      built += 1;
+      console.log(`BUILD_AGENT: Submission #${submission.id} BUILT -> ${featureFileName}`);
+    } catch (err) {
+      submission.status = 'FAILED';
+      submission.error = err.message;
+      submission.updatedAt = nowISO();
+      failed += 1;
+      console.error(`BUILD_AGENT: Submission #${submission.id} FAILED - ${err.message}`);
+    }
+
+    saveSubmissions(submissions);
+  }
+
+  return {
+    processed: pending.length,
+    built,
+    failed
+  };
+}
+
+module.exports = { run };
+
+if (require.main === module) {
+  run()
+    .then((result) => {
+      console.log('Build Agent completed:', result);
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('Build Agent failed:', err);
+      process.exit(1);
+    });
+}

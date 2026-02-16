@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CoVibe - AI 驱动功能生成器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="composer">
+        <input id="requestInput" type="text" placeholder="描述你想要的功能，比如：一个 BMI 计算器..." maxlength="200" />
+        <button id="submitBtn">生成</button>
+      </section>
+      <div id="statusText" class="status" hidden></div>
+      <div id="runtimeRoot"></div>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
