@@ -249,5 +249,32 @@
     "releasedAt": null,
     "error": null,
     "usedAI": true
+  },
+  {
+    "id": 11,
+    "request": "在页面里新增一个表格\n第一列用户昵称\n第二列任务描述\n第三列任务进程（评审中/生成中/已上线/未通过评审）",
+    "status": "RELEASING",
+    "createdAt": "2026-02-16T12:40:35.021Z",
+    "updatedAt": "2026-02-16T12:41:22.226Z",
+    "ip": "100.64.0.4",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 70,
+        "safety": 100,
+        "complexity": 10
+      },
+      "reason": "评审通过：在页面里新增一个表格\n第一列用户昵称\n第二列任务描述\n第三列任务进程（评审中/生成中/已上线/未通过...",
+      "recommendedApproach": "根据需求 \"在页面里新增一个表格\n第一列用户昵称\n第二列任务描述\n第三列任务进程（评审中/生成中/已上线/未通过评审）\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom-11",
+      "generatedAt": "2026-02-16T12:41:22.224Z",
+      "approach": "kimi-code-api"
+    },
+    "featureFile": "feature-11.js",
+    "releasedAt": null,
+    "error": null,
+    "usedAI": true
   }
 ]
