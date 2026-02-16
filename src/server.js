@@ -239,8 +239,8 @@ function createRateLimiter({ limit = 20, windowMs = 60_000 } = {}) {
 function safeRequestInput(value) {
   const text = String(value || '').trim();
   if (!text) return { valid: false, reason: '需求为空。' };
-  if (text.length > 200) return { valid: false, reason: '需求太长，请限制在 200 字以内。' };
-  if (!/[\p{L}\p{N}\p{P}\p{Zs}]+/u.test(text)) {
+  if (text.length > 1000) return { valid: false, reason: '需求太长，请限制在 1000 字以内。' };
+  if (!/^[\p{L}\p{N}\p{P}\p{Z}\s]+$/u.test(text)) {
     return { valid: false, reason: '需求包含非法字符。' };
   }
   return { valid: true, value: text };
@@ -316,6 +316,30 @@ function createAppServer({
         return sendJSON(res, 404, { error: 'Submission not found' });
       }
       return sendJSON(res, 200, submission);
+    }
+
+    // POST /api/submissions/:id/cancel - 取消需求执行
+    const matchCancel = method === 'POST' && url.match(/^\/api\/submissions\/(\d+)\/cancel$/);
+    if (matchCancel) {
+      const submissionId = Number(matchCancel[1]);
+      const submissions = loadSubmissions();
+      const submission = submissions.find((s) => s.id === submissionId);
+      if (!submission) {
+        return sendJSON(res, 404, { error: 'Submission not found' });
+      }
+
+      if (['RELEASED', 'REJECTED', 'FAILED', 'CANCELLED'].includes(submission.status)) {
+        return sendJSON(res, 409, { error: `当前状态 ${submission.status} 不可取消。` });
+      }
+
+      submission.status = 'CANCELLED';
+      submission.error = 'User cancelled';
+      submission.updatedAt = new Date().toISOString();
+      saveSubmissions(submissions);
+      return sendJSON(res, 200, {
+        submissionId: submission.id,
+        status: submission.status
+      });
     }
 
     // POST /api/submit - 提交新需求

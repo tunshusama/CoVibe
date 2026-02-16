@@ -1,25 +1,24 @@
 /* SuperDesign Modern Theme - CoVibe */
 
 :root {
-  /* Modern oklch color palette */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.22 264);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.145 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.55 0.22 264);
-  --accent-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.55 0.22 264);
+  --background: #fff7ef;
+  --foreground: #4a1616;
+  --primary: #c1121f;
+  --primary-foreground: #fff8ef;
+  --secondary: #ffe9d1;
+  --secondary-foreground: #5a1f1f;
+  --muted: #fff1e2;
+  --muted-foreground: #8a5a3a;
+  --accent: #f6b300;
+  --accent-foreground: #5a1f1f;
+  --border: #f3c9a8;
+  --input: #efbe9f;
+  --ring: #d62828;
   --radius: 0.75rem;
   
   /* Status colors */
-  --ok: oklch(0.55 0.15 145);
-  --bad: oklch(0.55 0.22 25);
+  --ok: #2d8a43;
+  --bad: #bf2f2f;
   
   /* Typography */
   --font-sans: Inter, system-ui, -apple-system, sans-serif;
@@ -43,7 +42,10 @@
 
 body {
   font-family: var(--font-sans);
-  background: var(--background);
+  background:
+    radial-gradient(circle at 8% 12%, #ffd666 0%, transparent 18%),
+    radial-gradient(circle at 92% 88%, #ffd666 0%, transparent 20%),
+    linear-gradient(180deg, #fff7ef 0%, #ffefd8 100%);
   color: var(--foreground);
   line-height: 1.5;
   min-height: 100vh;
@@ -62,16 +64,31 @@ body {
 .app::before {
   content: 'CoVibe';
   display: block;
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
   width: 100%;
   max-width: 1200px;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
   text-align: center;
-  background: linear-gradient(135deg, var(--primary) 0%, oklch(0.6 0.25 280) 100%);
+  background: linear-gradient(135deg, #b30016 0%, #d62828 50%, #f6b300 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.festival-banner {
+  width: 100%;
+  max-width: 980px;
+  text-align: center;
+  margin: 0 auto var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid #f0b77f;
+  background: linear-gradient(90deg, #c1121f 0%, #d62828 60%, #de8f05 100%);
+  color: #fff8ef;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 20px rgba(193, 18, 31, 0.15);
 }
 
 /* Input Composer */
@@ -83,24 +100,26 @@ body {
   margin: 0 auto var(--space-6);
 }
 
-.composer input {
+.composer textarea {
   flex: 1;
-  height: 4.25rem;
-  padding: 0 var(--space-4);
+  min-height: 8.5rem;
+  padding: var(--space-3) var(--space-4);
   font-size: 1.125rem;
   border: 1px solid var(--input);
   border-radius: var(--radius);
   background: var(--background);
   transition: all 200ms ease-out;
+  resize: vertical;
+  line-height: 1.5;
 }
 
-.composer input:focus {
+.composer textarea:focus {
   outline: none;
   border-color: var(--ring);
   box-shadow: 0 0 0 3px oklch(0.55 0.1 264 / 0.1);
 }
 
-.composer input::placeholder {
+.composer textarea::placeholder {
   color: var(--muted-foreground);
 }
 
@@ -111,14 +130,14 @@ body {
   font-weight: 600;
   border: none;
   border-radius: var(--radius);
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #de8f05 100%);
   color: var(--primary-foreground);
   cursor: pointer;
   transition: all 150ms ease-out;
 }
 
 .composer button:hover {
-  background: oklch(0.5 0.22 264);
+  filter: brightness(0.95);
   transform: translateY(-1px);
 }
 
@@ -130,6 +149,14 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+#cancelBtn {
+  background: linear-gradient(135deg, #8f1d1d 0%, #b43838 100%);
+}
+
+#cancelBtn:hover {
+  filter: brightness(0.95);
 }
 
 /* Status Messages */
@@ -146,15 +173,15 @@ body {
 }
 
 .status.ok {
-  background: oklch(0.97 0.05 145);
-  color: oklch(0.4 0.1 145);
-  border: 1px solid oklch(0.9 0.05 145);
+  background: #ecf9ee;
+  color: #26713a;
+  border: 1px solid #b8e0c0;
 }
 
 .status.bad {
-  background: oklch(0.97 0.05 25);
-  color: oklch(0.4 0.1 25);
-  border: 1px solid oklch(0.9 0.05 25);
+  background: #fff0f0;
+  color: #8b2323;
+  border: 1px solid #f2bcbc;
 }
 
 .status:not(.ok):not(.bad) {

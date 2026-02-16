@@ -199,10 +199,19 @@ async function run() {
   let failed = 0;
 
   for (const submission of pending) {
+    if (submission.status === 'CANCELLED') {
+      console.log(`RELEASE_AGENT: Submission #${submission.id} cancelled, skip`);
+      continue;
+    }
     console.log(`RELEASE_AGENT: Releasing submission #${submission.id}: "${submission.request}"`);
 
     let previousFeatures = null;
     try {
+      const latest = loadSubmissions().find((s) => s.id === submission.id);
+      if (!latest || latest.status === 'CANCELLED') {
+        console.log(`RELEASE_AGENT: Submission #${submission.id} cancelled before release, skip`);
+        continue;
+      }
       submission.status = 'RELEASING';
       submission.updatedAt = nowISO();
 

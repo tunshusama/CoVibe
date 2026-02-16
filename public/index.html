@@ -11,9 +11,11 @@
   </head>
   <body>
     <main class="app">
+      <div class="festival-banner">🧧 新春快乐！祝大家蛇年大吉，万事胜意 🧧</div>
       <section class="composer">
-        <input id="requestInput" type="text" placeholder="描述你想要的功能，比如：一个 BMI 计算器..." maxlength="200" />
+        <textarea id="requestInput" rows="5" placeholder="描述你想要的功能，比如：一个 BMI 计算器..." maxlength="1000"></textarea>
         <button id="submitBtn">生成</button>
+        <button id="cancelBtn" type="button" hidden>取消执行</button>
       </section>
       <div id="statusText" class="status" hidden></div>
       <div id="runtimeRoot"></div>

@@ -294,9 +294,18 @@ async function run() {
   let failed = 0;
 
   for (const submission of pending) {
+    if (submission.status === 'CANCELLED') {
+      console.log(`BUILD_AGENT: Submission #${submission.id} cancelled, skip`);
+      continue;
+    }
     console.log(`BUILD_AGENT: Building submission #${submission.id}: "${submission.request}"`);
 
     try {
+      const latest = loadSubmissions().find((s) => s.id === submission.id);
+      if (!latest || latest.status === 'CANCELLED') {
+        console.log(`BUILD_AGENT: Submission #${submission.id} cancelled before build, skip`);
+        continue;
+      }
       submission.status = 'GENERATING';
       submission.updatedAt = nowISO();
       submission.error = null;

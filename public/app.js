@@ -1,11 +1,13 @@
 const requestInput = document.getElementById('requestInput');
 const submitBtn = document.getElementById('submitBtn');
+const cancelBtn = document.getElementById('cancelBtn');
 const statusText = document.getElementById('statusText');
 const runtimeRoot = document.getElementById('runtimeRoot');
 
-const TERMINAL_STATUS = new Set(['RELEASED', 'REJECTED', 'FAILED']);
+const TERMINAL_STATUS = new Set(['RELEASED', 'REJECTED', 'FAILED', 'CANCELLED']);
 let pollTimer = null;
 let loadedFeatures = new Set();
+let activeSubmissionId = null;
 
 function escapeHTML(text) {
   return String(text || '')
@@ -315,6 +317,9 @@ async function pollSubmission(submissionId) {
 
 async function runPolling(submissionId) {
   if (pollTimer) clearInterval(pollTimer);
+  activeSubmissionId = submissionId;
+  cancelBtn.hidden = false;
+  cancelBtn.disabled = false;
 
   const tick = async () => {
     const submission = await pollSubmission(submissionId);
@@ -323,6 +328,7 @@ async function runPolling(submissionId) {
         `无法获取任务状态（${submission ? submission.__error : 'UNKNOWN'}）。请确认后端已重启到最新版本。`,
         'bad'
       );
+      cancelBtn.hidden = true;
       clearInterval(pollTimer);
       pollTimer = null;
       return;
@@ -343,7 +349,14 @@ async function runPolling(submissionId) {
       await refreshRuntime();
     }
 
+    if (submission.status === 'CANCELLED') {
+      showStatus('需求已取消执行。', 'bad');
+    }
+
     if (TERMINAL_STATUS.has(submission.status)) {
+      cancelBtn.hidden = true;
+      cancelBtn.disabled = true;
+      activeSubmissionId = null;
       clearInterval(pollTimer);
       pollTimer = null;
     }
@@ -381,9 +394,34 @@ async function submitRequest() {
   }
 }
 
+async function cancelActiveSubmission() {
+  if (!activeSubmissionId) return;
+  const ok = window.confirm(`确认取消任务 #${activeSubmissionId} 吗？`);
+  if (!ok) return;
+
+  cancelBtn.disabled = true;
+  try {
+    const res = await fetch(`/api/submissions/${activeSubmissionId}/cancel`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) {
+      showStatus(data.error || '取消失败', 'bad');
+      cancelBtn.disabled = false;
+      return;
+    }
+    showStatus(`任务 #${activeSubmissionId} 已取消`, 'bad');
+    cancelBtn.hidden = true;
+    activeSubmissionId = null;
+    await refreshRuntime();
+  } catch (error) {
+    showStatus(`取消失败: ${error.message || 'NETWORK_ERROR'}`, 'bad');
+    cancelBtn.disabled = false;
+  }
+}
+
 submitBtn.addEventListener('click', submitRequest);
+cancelBtn.addEventListener('click', cancelActiveSubmission);
 requestInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') submitRequest();
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitRequest();
 });
 
 refreshRuntime();
