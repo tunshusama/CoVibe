@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 const { run: runReviewAgent } = require('../skills/review-agent/index');
 const { run: runBuildAgent } = require('../skills/build-agent/index');
@@ -12,6 +13,9 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const FEATURE_FILES_DIR = process.env.FEATURES_DIR || path.join(PUBLIC_DIR, 'features');
 const SUBMISSIONS_FILE = path.join(DATA_DIR, 'submissions.json');
 const FEATURES_FILE = path.join(DATA_DIR, 'features.json');
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_REPO = process.env.GITHUB_REPO || '';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 // Ensure data files exist
 function initDataFiles() {
@@ -39,6 +43,69 @@ function saveSubmissions(submissions) {
 
 function loadFeatures() {
   return JSON.parse(fs.readFileSync(FEATURES_FILE, 'utf8'));
+}
+
+function canUseGitHubFallback() {
+  return Boolean(GITHUB_TOKEN && GITHUB_REPO && GITHUB_REPO.includes('/'));
+}
+
+function githubGetFileText(repoPath) {
+  return new Promise((resolve, reject) => {
+    if (!canUseGitHubFallback()) return resolve(null);
+    const encodedPath = repoPath.split('/').map(encodeURIComponent).join('/');
+    const req = https.request(
+      {
+        hostname: 'api.github.com',
+        port: 443,
+        path: `/repos/${GITHUB_REPO}/contents/${encodedPath}?ref=${encodeURIComponent(GITHUB_BRANCH)}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'covibe-server',
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          const status = Number(res.statusCode || 0);
+          if (status === 404) return resolve(null);
+          if (status < 200 || status >= 300) return reject(new Error(`GITHUB_HTTP_${status}`));
+          try {
+            const json = JSON.parse(raw);
+            if (!json || !json.content) return resolve(null);
+            const content = Buffer.from(String(json.content).replace(/\n/g, ''), 'base64').toString('utf8');
+            resolve(content);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function loadFeaturesWithFallback() {
+  const local = loadFeatures();
+  if (Array.isArray(local) && local.length > 0) return local;
+  try {
+    const remoteText = await githubGetFileText('data/features.json');
+    if (!remoteText) return local;
+    const remote = JSON.parse(remoteText);
+    if (Array.isArray(remote) && remote.length > 0) {
+      fs.writeFileSync(FEATURES_FILE, JSON.stringify(remote, null, 2));
+      return remote;
+    }
+  } catch (error) {
+    console.warn('FEATURE_FALLBACK: failed to load features.json from GitHub', error.message);
+  }
+  return local;
 }
 
 function generateId() {
@@ -110,7 +177,7 @@ function serveStatic(req, res, publicDir) {
   });
 }
 
-function serveFeatureFile(req, res) {
+async function serveFeatureFile(req, res) {
   const reqPath = decodeURIComponent(req.url.split('?')[0]);
   const normalized = reqPath.replace(/^\/features\//, '');
   if (!normalized || normalized.includes('..')) {
@@ -124,14 +191,30 @@ function serveFeatureFile(req, res) {
     return true;
   }
 
-  fs.readFile(fullPath, (err, data) => {
-    if (err) {
-      sendText(res, 404, 'Not Found');
-      return;
-    }
+  try {
+    const data = await fs.promises.readFile(fullPath);
     res.writeHead(200, { 'Content-Type': contentType(fullPath) });
     res.end(data);
-  });
+    return true;
+  } catch {
+    // Fallback to GitHub when local feature artifact is absent.
+    try {
+      const remoteText = await githubGetFileText(`public/features/${normalized}`);
+      if (!remoteText) {
+        sendText(res, 404, 'Not Found');
+        return true;
+      }
+      fs.mkdirSync(FEATURE_FILES_DIR, { recursive: true });
+      fs.writeFileSync(fullPath, remoteText, 'utf8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+      res.end(remoteText);
+      return true;
+    } catch (error) {
+      console.warn('FEATURE_FALLBACK: failed to load feature file from GitHub', error.message);
+      sendText(res, 404, 'Not Found');
+      return true;
+    }
+  }
   return true;
 }
 
@@ -209,7 +292,7 @@ function createAppServer({
 
     // GET /api/state - 获取公开状态（已发布功能列表）
     if (method === 'GET' && url === '/api/state') {
-      const features = loadFeatures();
+      const features = await loadFeaturesWithFallback();
       const submissions = loadSubmissions();
       const recentSubmissions = submissions.slice(-10).reverse();
       return sendJSON(res, 200, {
