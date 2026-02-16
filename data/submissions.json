@@ -196,5 +196,31 @@
     "releasedAt": null,
     "error": null,
     "usedAI": true
+  },
+  {
+    "id": 9,
+    "request": "我希望网站能够有一个列表。第一列是发起用户（即发起该需求的用户昵称）第二列是需求简介（由ai）展示当前需求状态（评审中/生成中/已上线）",
+    "status": "RELEASING",
+    "createdAt": "2026-02-16T12:02:01.669Z",
+    "updatedAt": "2026-02-16T12:04:01.053Z",
+    "ip": "100.64.0.2",
+    "review": {
+      "approved": true,
+      "scores": {
+        "clarity": 80,
+        "safety": 100
+      },
+      "reason": "评审通过：我希望网站能够有一个列表。第一列是发起用户（即发起该需求的用户昵称）第二列是需求简介（由ai）展示当...",
+      "recommendedApproach": "根据需求 \"我希望网站能够有一个列表。第一列是发起用户（即发起该需求的用户昵称）第二列是需求简介（由ai）展示当前需求状态（评审中/生成中/已上线）\" 生成交互式组件，包含用户描述的输入、操作和显示逻辑。"
+    },
+    "artifact": {
+      "moduleType": "custom-9",
+      "generatedAt": "2026-02-16T12:04:01.052Z",
+      "approach": "kimi-code-api"
+    },
+    "featureFile": "feature-9.js",
+    "releasedAt": null,
+    "error": null,
+    "usedAI": true
   }
 ]
