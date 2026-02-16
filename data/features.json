@@ -25,5 +25,14 @@
     "featureFile": "feature-6.js",
     "usedAI": true,
     "releasedAt": "2026-02-16T07:44:48.098Z"
+  },
+  {
+    "id": 7,
+    "submissionId": 7,
+    "moduleType": "custom-7",
+    "request": "我要给每个访问该网站的用户赋予一个昵称，格式“形容词+水果/蔬菜/动物名”。用户可以刷新，确认后就将该昵称与该用户绑定，不可更改",
+    "featureFile": "feature-7.js",
+    "usedAI": true,
+    "releasedAt": "2026-02-16T08:10:01.748Z"
   }
 ]
